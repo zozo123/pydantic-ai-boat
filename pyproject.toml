@@ -1,0 +1,175 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pydantic-ai-boat"
+version = "0.1.0"
+description = "Boat cloud sandboxes as a Pydantic AI workspace: run an agent's commands and file edits in an isolated VM."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Yossi Eliaz", email = "yossi.eliaz@incredibuild.com" }]
+requires-python = ">=3.11"
+keywords = ["pydantic-ai", "agents", "sandbox", "boat", "workspace"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    # The upper bound is deliberate: the backend uses core's private `_ShellFilesystem`, and the
+    # workspace protocol it implements is checked against this range by its conformance suite.
+    "pydantic-ai-slim>=2.59.0,<3",
+    "httpx>=0.28.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/zozo123/pydantic-ai-boat"
+Repository = "https://github.com/zozo123/pydantic-ai-boat"
+Issues = "https://github.com/zozo123/pydantic-ai-boat/issues"
+
+[dependency-groups]
+dev = [
+    # `anyio_mode = "auto"` (pytest plugin) was added in 4.11.0.
+    "anyio>=4.11.0",
+    "coverage[toml]>=7.10.7",
+    # For the tests that drive `Coder` and `Shell` against the sandbox.
+    "pydantic-ai-harness>=0.59.0",
+    "pyright>=1.1.414",
+    "pytest>=9.0.3",
+    "ruff>=0.16.8",
+    # For the test that checks Trio is refused.
+    "trio>=0.34.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pydantic_ai_boat"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pydantic_ai_boat", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+include = ["src/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+preview = true  # For `PLW1514`
+explicit-preview-rules = true
+select = ["E4", "E7", "E9", "F"]
+extend-select = [
+    "Q",
+    "RUF100",
+    "RUF018", # https://docs.astral.sh/ruff/rules/assignment-in-assert/
+    "RUF043", # https://docs.astral.sh/ruff/rules/pytest-raises-ambiguous-pattern/
+    "C90",
+    "UP",
+    "I",
+    "D",
+    "TID251",
+    "PLW1514", # https://docs.astral.sh/ruff/rules/unspecified-encoding/
+    "PGH003", # https://docs.astral.sh/ruff/rules/blanket-type-ignore/
+]
+flake8-quotes = { inline-quotes = "single", multiline-quotes = "double" }
+mccabe = { max-complexity = 15 }
+ignore = [
+    "D100", # ignore missing docstring in module
+    "D102", # ignore missing docstring in public method
+    "D104", # ignore missing docstring in public package
+    "D105", # ignore missing docstring in magic methods
+    "D107", # ignore missing docstring in __init__ methods
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["pydantic_ai_boat"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.TypedDict".msg = "Use typing_extensions.TypedDict instead."
+"asyncio.Lock".msg = "Use anyio.Lock instead."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
+
+[tool.ruff.format]
+docstring-code-format = false
+quote-style = "single"
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnnecessaryIsInstance = false
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingModuleSource = false
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+# Decorated functions in tests are not otherwise used.
+executionEnvironments = [
+    { root = "tests", reportUnusedFunction = false, reportPrivateImportUsage = false },
+    { root = "src" },
+]
+
+[tool.pytest.ini_options]
+# Every `async def` test runs via anyio; no `@pytest.mark.anyio` needed.
+anyio_mode = "auto"
+testpaths = ["tests"]
+xfail_strict = true
+markers = [
+    "boat_live: runs against a real Boat control plane; needs credentials",
+]
+filterwarnings = [
+    "error",
+    # anyio 4.14+ intentionally leaves a task's coroutine unawaited when the task is cancelled natively
+    # before its first step, and the garbage collector then warns in whatever test is running.
+    "ignore:coroutine '.*' was never awaited:RuntimeWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/pydantic_ai_boat", "tests"]
+omit = [
+    # The live tier runs only with Boat credentials.
+    "tests/*_live.py",
+]
+
+[tool.coverage.report]
+fail_under = 100
+skip_covered = true
+show_missing = true
+precision = 2
+exclude_lines = [
+    # `# pragma: no cover` is standard marker for code that's not covered, this will error if code is covered
+    'pragma: no cover',
+    # use `# pragma: lax no cover` if you want to ignore cases where (some of) the code is covered
+    'pragma: lax no cover',
+    'raise NotImplementedError',
+    'if TYPE_CHECKING:',
+    'if typing.TYPE_CHECKING:',
+    '@overload',
+    '@typing.overload',
+    '@abstractmethod',
+    'typing.assert_never',
+    '$\s*assert_never\(',
+    'if __name__ == .__main__.:',
+    '$\s*pass$',
+    'assert False',
+    '@pytest\.mark\.skip',
+    '@pytest\.mark\.xfail',
+]
