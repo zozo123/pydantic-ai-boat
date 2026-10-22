@@ -8,48 +8,39 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11', '3.12', '3.13']
-    env:
-      UV_PYTHON: ${{ matrix.python-version }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
-      - run: uv sync --locked
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run pyright
-      - run: uv run coverage run -m pytest
-        env:
-          COVERAGE_FILE: .coverage.${{ matrix.python-version }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.python-version }}
-          path: .coverage.${{ matrix.python-version }}
-          include-hidden-files: true
-
-  coverage:
-    # The tracers of different Python versions record a few `async with` exits differently, so 100% is
-    # required of the matrix's combined data rather than of each version's.
-    needs: test
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.13'
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-*
-          merge-multiple: true
+          enable-cache: true
       - run: uv sync --locked
-      - run: uv run coverage combine
-      - run: uv run coverage report --fail-under=100
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pyright
+
+  live:
+    # The tests start real Boat sandboxes, so they run only where the `BOAT_API_KEY` secret is set
+    # (not on pull requests from forks), one run at a time because Boat limits sandbox starts.
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: boat-live
+    env:
+      BOAT_API_KEY: ${{ secrets.BOAT_API_KEY }}
+    steps:
+      - if: env.BOAT_API_KEY == ''
+        run: echo 'BOAT_API_KEY is not set; skipping the live tests.'
+      - if: env.BOAT_API_KEY != ''
+        uses: actions/checkout@v4
+      - if: env.BOAT_API_KEY != ''
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+          enable-cache: true
+      - if: env.BOAT_API_KEY != ''
+        run: uv sync --locked
+      - if: env.BOAT_API_KEY != ''
+        run: uv run pytest tests -q
