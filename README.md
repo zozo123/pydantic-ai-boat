@@ -1,6 +1,6 @@
 # pydantic-ai-boat
 
-Run a [Pydantic AI](https://pydantic.dev/docs/ai/) agent's commands and file edits in a [Boat](https://boat.dev) cloud sandbox instead of on your machine.
+Run a [Pydantic AI](https://pydantic.dev/docs/ai/) agent's commands and file edits in a [Boat](https://boat.dev) cloud sandbox instead of on your machine. Community package (v0.1.0, installed from Git); not part of Pydantic AI.
 
 It is one module on top of Boat's official Python SDK, [`boat-sdk`](https://pypi.org/project/boat-sdk/). `BoatSandbox` is a Pydantic AI capability that supplies a Boat sandbox, a root Ubuntu VM, as the run's [workspace](https://pydantic.dev/docs/ai/core-concepts/workspace/), so workspace tools such as Pydantic AI Harness's `Coder`, `Shell` and `FileSystem` run there.
 
@@ -78,7 +78,7 @@ The tests run Pydantic AI's workspace backend conformance suite (`WorkspaceBacke
 
 ## Status
 
-A community package, not part of Pydantic AI. The integration was proposed upstream in [pydantic/pydantic-ai#10967](https://github.com/pydantic/pydantic-ai/pull/10967), and [pydantic/pydantic-ai#11002](https://github.com/pydantic/pydantic-ai/pull/11002) lists it in Pydantic AI's third-party capabilities catalog. While it is on 0.x, the API may change between minor releases.
+A community package, not part of Pydantic AI. A first-party integration was proposed in [pydantic/pydantic-ai#10967](https://github.com/pydantic/pydantic-ai/pull/10967) and closed in favour of shipping it as this third-party package. While it is on 0.x, the API may change between minor releases.
 
 ## License
 
